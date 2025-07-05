@@ -1,0 +1,17 @@
+{
+  "name": "cv",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "latexmk -pdf -output-directory=out Mala-ay_CV.tex",
+    "clean": "latexmk -c"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "node-latex": "^3.1.0"
+  },
+  "type": "module"
+}
