@@ -16,7 +16,11 @@
 \input{glyphtounicode}
 
 % Font options
-\usepackage[T1]{fontenc}
+% Disable typographic ligatures (e.g., fi, fl) for ATS readability
+% and turn off font expansion to avoid issues with non-scalable fonts
+\usepackage{microtype}
+\microtypesetup{expansion=false}
+\DisableLigatures{encoding = *, family = *}
 
 \pagestyle{fancy}
 \fancyhf{} % clear all header and footer fields
