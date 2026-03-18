@@ -37,27 +37,32 @@ export default function LaTeXEditor({
   )
 
   return (
-    <div ref={containerRef} className="latex-editor">
-      <CodeMirror
-        value={value}
-        height={height}
-        minHeight="400px"
-        placeholder={placeholder}
-        extensions={[latex()]}
-        onChange={handleChange}
-        basicSetup={{
-          lineNumbers: true,
-          foldGutter: true,
-          highlightActiveLineGutter: true,
-          highlightActiveLine: true,
-          bracketMatching: true,
-          closeBrackets: true,
-          autocompletion: true,
-          indentOnInput: true,
-          tabSize: 2
-        }}
-        theme="dark"
-      />
+    <div
+      ref={containerRef}
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <CodeMirror
+          value={value}
+          height={height}
+          minHeight="400px"
+          placeholder={placeholder}
+          extensions={[latex()]}
+          onChange={handleChange}
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: true,
+            highlightActiveLineGutter: true,
+            highlightActiveLine: true,
+            bracketMatching: true,
+            closeBrackets: true,
+            autocompletion: true,
+            indentOnInput: true,
+            tabSize: 2
+          }}
+          theme="dark"
+        />
+      </div>
     </div>
   )
 }

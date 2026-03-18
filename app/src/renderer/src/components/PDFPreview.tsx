@@ -34,37 +34,41 @@ export default function PDFPreview({
 
   if (isCompiling) {
     return (
-      <div className="pdf-preview pdf-preview--loading">
-        <div className="pdf-preview__spinner" />
-        <p>Compiling LaTeX…</p>
+      <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+        <p className="mt-3 text-sm">Compiling LaTeX…</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="pdf-preview pdf-preview--error">
-        <div className="pdf-preview__error-icon">!</div>
-        <p className="pdf-preview__error-title">Compilation failed</p>
-        <pre className="pdf-preview__error-message">{error}</pre>
+      <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/15 text-2xl font-bold text-destructive">
+          !
+        </div>
+        <p className="mt-3 font-semibold text-foreground">Compilation failed</p>
+        <pre className="mt-2 max-w-full overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-left text-sm text-destructive">
+          {error}
+        </pre>
       </div>
     )
   }
 
   if (!displayUrl) {
     return (
-      <div className="pdf-preview pdf-preview--empty">
-        <p>Edit LaTeX on the right to see the PDF preview.</p>
+      <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
+        <p className="text-sm">Edit LaTeX on the right to see the PDF preview.</p>
       </div>
     )
   }
 
   return (
-    <div className="pdf-preview">
+    <div className="flex flex-1 flex-col min-h-0 bg-[#525659]">
       <iframe
         src={displayUrl}
         title="CV PDF Preview"
-        className="pdf-preview__iframe"
+        className="flex-1 w-full border-none bg-[#525659]"
       />
     </div>
   )
