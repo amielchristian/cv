@@ -6,16 +6,40 @@ import {
 } from '@/components/ui/resizable'
 import LaTeXEditor from './components/LaTeXEditor'
 import PDFPreview from './components/PDFPreview'
+import { TitleBar } from './components/TitleBar'
 import { DEFAULT_CV } from './constants/defaultCv'
 
 const COMPILE_DEBOUNCE_MS = 800
+const SAVE_DEBOUNCE_MS = 500
 
 function App(): React.JSX.Element {
   const [latex, setLatex] = useState(DEFAULT_CV)
   const [pdfBase64, setPdfBase64] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isCompiling, setIsCompiling] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    const load = async (): Promise<void> => {
+      try {
+        const savedLatex = await window.api.loadLaTeX()
+        if (isMounted && savedLatex !== null) {
+          setLatex(savedLatex)
+        }
+      } catch {
+        // Ignore load failures and fall back to default content.
+      } finally {
+        if (isMounted) setIsLoaded(true)
+      }
+    }
+    load()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const compile = useCallback(async (tex: string) => {
     if (!tex.trim()) {
@@ -43,6 +67,7 @@ function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
+    if (!isLoaded) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       compile(latex)
@@ -51,18 +76,38 @@ function App(): React.JSX.Element {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [latex, compile])
+  }, [latex, compile, isLoaded])
+
+  useEffect(() => {
+    if (!isLoaded) return
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+    saveDebounceRef.current = setTimeout(() => {
+      void window.api.saveLaTeX(latex).catch((err) => {
+        console.error('Failed to save LaTeX:', err)
+      })
+      saveDebounceRef.current = null
+    }, SAVE_DEBOUNCE_MS)
+    return () => {
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current)
+    }
+  }, [latex, isLoaded])
+
+  useEffect(() => {
+    const flushOnClose = (): void => {
+      const result = window.api.saveLaTeXSync(latex)
+      if (!result.ok) {
+        console.error('Failed to synchronously save LaTeX:', result.error)
+      }
+    }
+    window.addEventListener('beforeunload', flushOnClose)
+    return () => {
+      window.removeEventListener('beforeunload', flushOnClose)
+    }
+  }, [latex])
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <header className="flex-shrink-0 border-b border-border bg-muted/50 px-5 py-3">
-        <h1 className="text-lg font-semibold tracking-tight text-foreground">
-          CV Builder
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          LaTeX-powered • PDF preview updates as you type
-        </p>
-      </header>
+      <TitleBar />
       <ResizablePanelGroup
         direction="horizontal"
         className="flex-1 min-h-0"
@@ -75,7 +120,7 @@ function App(): React.JSX.Element {
             <LaTeXEditor value={latex} onChange={setLatex} />
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle />
+        <ResizableHandle />
         <ResizablePanel defaultSize={50} minSize={20}>
           <div className="flex h-full flex-col">
             <div className="flex-shrink-0 border-b border-border bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

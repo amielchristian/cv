@@ -1,7 +1,14 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { dirname, join } from 'path'
+import { mkdir, readFile, writeFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+
+const LATEX_FILENAME = 'document.tex'
+
+function getLatexFilePath(): string {
+  return join(app.getPath('userData'), LATEX_FILENAME)
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -10,6 +17,12 @@ function createWindow(): void {
     height: 800,
     show: false,
     autoHideMenuBar: true,
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hiddenInset',
+          trafficLightPosition: { x: 14, y: 14 }
+        }
+      : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -56,6 +69,38 @@ app.whenReady().then(() => {
   ipcMain.handle('compile-latex', async (_, tex: string) => {
     const { compileLaTeX } = await import('./latex')
     return compileLaTeX(tex)
+  })
+
+  ipcMain.handle('load-latex', async () => {
+    try {
+      return await readFile(getLatexFilePath(), 'utf-8')
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return null
+      }
+      throw error
+    }
+  })
+
+  ipcMain.handle('save-latex', async (_, tex: string) => {
+    const latexFilePath = getLatexFilePath()
+    await mkdir(dirname(latexFilePath), { recursive: true })
+    await writeFile(latexFilePath, tex, 'utf-8')
+  })
+
+  ipcMain.on('save-latex-sync', (event, tex: string) => {
+    const fs = require('fs') as typeof import('fs')
+    try {
+      const latexFilePath = getLatexFilePath()
+      fs.mkdirSync(dirname(latexFilePath), { recursive: true })
+      fs.writeFileSync(latexFilePath, tex, 'utf-8')
+      event.returnValue = { ok: true }
+    } catch (error) {
+      event.returnValue = {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
   })
 
   createWindow()

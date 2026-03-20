@@ -10,7 +10,12 @@ interface CompileResult {
 // Custom APIs for renderer
 const api = {
   compileLaTeX: (tex: string): Promise<CompileResult> =>
-    ipcRenderer.invoke('compile-latex', tex)
+    ipcRenderer.invoke('compile-latex', tex),
+  loadLaTeX: (): Promise<string | null> => ipcRenderer.invoke('load-latex'),
+  saveLaTeX: (tex: string): Promise<void> => ipcRenderer.invoke('save-latex', tex),
+  saveLaTeXSync: (tex: string): { ok: boolean; error?: string } =>
+    ipcRenderer.sendSync('save-latex-sync', tex),
+  platform: process.platform as NodeJS.Platform
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
