@@ -3,6 +3,8 @@ import { dirname, join } from 'path'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { closeDb, initDb } from './db/client'
+import { registerDbIpc } from './ipc/db'
 
 const LATEX_FILENAME = 'document.tex'
 
@@ -65,6 +67,9 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  initDb()
+  registerDbIpc()
+
   // LaTeX compilation
   ipcMain.handle('compile-latex', async (_, tex: string) => {
     const { compileLaTeX } = await import('./latex')
@@ -101,6 +106,10 @@ app.whenReady().then(() => {
         error: error instanceof Error ? error.message : String(error)
       }
     }
+  })
+
+  app.on('before-quit', () => {
+    closeDb()
   })
 
   createWindow()

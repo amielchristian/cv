@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { DbRequest, DbResult } from '../db/ipc'
 
 interface CompileResult {
   success: boolean
@@ -9,12 +10,14 @@ interface CompileResult {
 
 // Custom APIs for renderer
 const api = {
-  compileLaTeX: (tex: string): Promise<CompileResult> =>
-    ipcRenderer.invoke('compile-latex', tex),
+  compileLaTeX: (tex: string): Promise<CompileResult> => ipcRenderer.invoke('compile-latex', tex),
   loadLaTeX: (): Promise<string | null> => ipcRenderer.invoke('load-latex'),
   saveLaTeX: (tex: string): Promise<void> => ipcRenderer.invoke('save-latex', tex),
   saveLaTeXSync: (tex: string): { ok: boolean; error?: string } =>
     ipcRenderer.sendSync('save-latex-sync', tex),
+  db: {
+    run: (req: DbRequest): Promise<DbResult<unknown>> => ipcRenderer.invoke('db:op', req)
+  },
   platform: process.platform as NodeJS.Platform
 }
 
