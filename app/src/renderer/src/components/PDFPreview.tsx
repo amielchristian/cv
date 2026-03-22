@@ -68,7 +68,7 @@ export default function PDFPreview({
       <iframe
         src={displayUrl}
         title="CV PDF Preview"
-        className="flex-1 w-full border-none bg-[#525659]"
+        className="flex-1 w-full border border-border bg-[#525659]"
       />
     </div>
   )

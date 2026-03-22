@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup
-} from '@/components/ui/resizable'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import LaTeXEditor from './components/LaTeXEditor'
 import PDFPreview from './components/PDFPreview'
 import { TitleBar } from './components/TitleBar'
@@ -108,13 +104,10 @@ function App(): React.JSX.Element {
   return (
     <div className="flex h-screen flex-col bg-background">
       <TitleBar />
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="flex-1 min-h-0"
-      >
+      <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
         <ResizablePanel defaultSize={50} minSize={20}>
           <div className="flex h-full flex-col">
-            <div className="flex-shrink-0 border-b border-border bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="flex-shrink-0 border-b border-[var(--border-scroll)] bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               LaTeX
             </div>
             <LaTeXEditor value={latex} onChange={setLatex} />
@@ -123,14 +116,10 @@ function App(): React.JSX.Element {
         <ResizableHandle />
         <ResizablePanel defaultSize={50} minSize={20}>
           <div className="flex h-full flex-col">
-            <div className="flex-shrink-0 border-b border-border bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="flex-shrink-0 border-b border-[var(--border-scroll)] bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Preview
             </div>
-            <PDFPreview
-              pdfBase64={pdfBase64}
-              error={error}
-              isCompiling={isCompiling}
-            />
+            <PDFPreview pdfBase64={pdfBase64} error={error} isCompiling={isCompiling} />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

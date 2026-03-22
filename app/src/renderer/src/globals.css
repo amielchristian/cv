@@ -24,6 +24,7 @@
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
     --radius: 0.625rem;
+    --border-scroll: #aaa;
   }
 
   .dark {
@@ -46,6 +47,7 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+    --border-scroll: #585858;
   }
 }
 
@@ -61,5 +63,30 @@
   }
   #root {
     @apply block h-screen m-0;
+  }
+
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+    background: transparent;
+    border-left: 0.5px solid var(--border-scroll);
+  }
+  ::-webkit-scrollbar:horizontal {
+    border-top: 0.5px solid var(--border-scroll);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border-left: 0.5px solid var(--border-scroll);
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.4);
+    border-left: 0.5px solid var(--border-scroll);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.6);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
