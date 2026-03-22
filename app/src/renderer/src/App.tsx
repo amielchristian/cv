@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/resizable-panels'
-import { EditorPage } from './pages/editor/EditorPage'
-import { PreviewPage } from './pages/preview/PreviewPage'
-import { TitleBar } from './components/TitleBar'
-import { DEFAULT_CV } from './constants/defaultCv'
-import type { LeftPaneViewId } from './pages/editor/left-pane-views'
+import { Route, Routes } from 'react-router-dom'
+import { PrimaryNav } from '@/components/PrimaryNav'
+import { TitleBar } from '@/components/TitleBar'
+import { DEFAULT_CV } from '@/constants/defaultCv'
+import { ChatPage } from '@/pages/chat/ChatPage'
+import { CvDataPage } from '@/pages/cv-data/CvDataPage'
+import type { LeftPaneViewId } from '@/pages/editor/left-pane-views'
+import { WorkspacePage } from '@/pages/workspace/WorkspacePage'
 
 const COMPILE_DEBOUNCE_MS = 800
 const SAVE_DEBOUNCE_MS = 500
@@ -106,20 +108,27 @@ function App(): React.JSX.Element {
   return (
     <div className="flex h-screen flex-col bg-background">
       <TitleBar />
-      <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-        <ResizablePanel defaultSize={50} minSize={20}>
-          <EditorPage
-            latex={latex}
-            onLatexChange={setLatex}
-            activeView={leftPaneView}
-            onViewChange={setLeftPaneView}
+      <PrimaryNav />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <WorkspacePage
+                latex={latex}
+                onLatexChange={setLatex}
+                activeView={leftPaneView}
+                onViewChange={setLeftPaneView}
+                pdfBase64={pdfBase64}
+                error={error}
+                isCompiling={isCompiling}
+              />
+            }
           />
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel defaultSize={50} minSize={20}>
-          <PreviewPage pdfBase64={pdfBase64} error={error} isCompiling={isCompiling} />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          <Route path="/cv" element={<CvDataPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+        </Routes>
+      </div>
     </div>
   )
 }
