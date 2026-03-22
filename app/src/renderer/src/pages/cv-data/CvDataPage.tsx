@@ -95,10 +95,10 @@ export function CvDataPage(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-background p-4">
+    <div className="h-full min-h-0 flex-1 overflow-y-auto bg-background p-4">
       <div className="mx-auto max-w-3xl space-y-8 pb-12">
         <p className="text-sm text-muted-foreground">
-          Structured CV fields (cvbuild-aligned). Local state only — not yet synced to the LaTeX
+          Structured CV fields (cvbuild-aligned). Local state only — not yet synced to the Source
           editor.
         </p>
 

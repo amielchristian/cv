@@ -1,3 +1,5 @@
+import { ChatPage } from '@/pages/chat/ChatPage'
+import { CvDataPage } from '@/pages/cv-data/CvDataPage'
 import { LeftPane } from './LeftPane'
 import LaTeXEditor from './LaTeXEditor'
 import type { LeftPaneViewId } from './left-pane-views'
@@ -20,7 +22,9 @@ export function EditorPage({
       activeView={activeView}
       onViewChange={onViewChange}
       views={{
-        source: <LaTeXEditor value={latex} onChange={onLatexChange} />
+        source: <LaTeXEditor value={latex} onChange={onLatexChange} />,
+        cvData: <CvDataPage />,
+        chat: <ChatPage />
       }}
     />
   )

@@ -40,7 +40,7 @@ export function ChatPage(): React.JSX.Element {
   }, [draft])
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-background">
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-background">
       <div
         ref={listRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4"
