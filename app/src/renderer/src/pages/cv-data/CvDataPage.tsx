@@ -5,10 +5,24 @@ import type {
   ExperienceEntry,
   LeadershipEntry,
   Profile,
-  ProfileLink,
   SkillGroup
 } from './cv-schema'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { CV_DEBOUNCE_MS, dbRun, loadCvData } from '@/lib/cv-db'
+import {
+  emptyLinkSlot,
+  PROFILE_LINK_NONE,
+  PROFILE_LINK_PRESETS,
+  profileLinksFromSlots,
+  slotsFromProfileLinks,
+  type LinkSlot
+} from '@/lib/profile-link-presets'
 import { newId } from '@/lib/id'
 
 const emptyProfile: Profile = {
@@ -33,8 +47,14 @@ function SectionTitle({ children }: { children: React.ReactNode }): React.JSX.El
 }
 
 export function CvDataPage(): React.JSX.Element {
+  /** UI: initial fetch finished (success or failure). */
   const [hydrated, setHydrated] = useState(false)
+  /** DB writes allowed only after a successful load — avoids saving empty state over real data. */
+  const [loadApplied, setLoadApplied] = useState(false)
+  const loadAppliedRef = useRef(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [profile, setProfile] = useState<Profile>(emptyProfile)
+  const [linkSlots, setLinkSlots] = useState<LinkSlot[]>([])
   const [education, setEducation] = useState<EducationEntry[]>([])
   const [experience, setExperience] = useState<ExperienceEntry[]>([])
   const [leadership, setLeadership] = useState<LeadershipEntry[]>([])
@@ -79,7 +99,12 @@ export function CvDataPage(): React.JSX.Element {
       try {
         const data = await loadCvData()
         if (cancelled) return
-        setProfile(data.profile ?? emptyProfile)
+        const prof = data.profile ?? emptyProfile
+        loadAppliedRef.current = true
+        setLoadApplied(true)
+        setLoadError(null)
+        setProfile(prof)
+        setLinkSlots(slotsFromProfileLinks(prof.links))
         setEducation(data.education)
         setExperience(data.experience)
         setLeadership(data.leadership)
@@ -87,6 +112,9 @@ export function CvDataPage(): React.JSX.Element {
         setSkillGroups(data.skillGroups)
       } catch (e) {
         console.error('Failed to load CV data:', e)
+        loadAppliedRef.current = false
+        setLoadApplied(false)
+        setLoadError(e instanceof Error ? e.message : String(e))
       } finally {
         if (!cancelled) setHydrated(true)
       }
@@ -97,18 +125,19 @@ export function CvDataPage(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
-    if (!hydrated) return
+    if (!loadApplied) return
     const t = setTimeout(() => {
       void dbRun({ type: 'upsertProfile', payload: profile }).catch((err) =>
         console.error('Failed to save profile:', err)
       )
     }, CV_DEBOUNCE_MS)
     return () => clearTimeout(t)
-  }, [profile, hydrated])
+  }, [profile, loadApplied])
 
   useEffect(() => {
     const timersRef = rowTimersRef
     return () => {
+      if (!loadAppliedRef.current) return
       const pendingRowKeys = Object.keys(timersRef.current)
       pendingRowKeys.forEach((k) => clearRowTimer(k))
       void dbRun({ type: 'upsertProfile', payload: profileRef.current }).catch((err) =>
@@ -331,20 +360,37 @@ export function CvDataPage(): React.JSX.Element {
     )
   }, [])
 
-  const addProfileLink = useCallback((): void => {
-    setProfile((p) => ({ ...p, links: [...p.links, { label: '', url: '' }] }))
+  const updateLinkSlots = useCallback((updater: (prev: LinkSlot[]) => LinkSlot[]) => {
+    setLinkSlots((prev) => {
+      const next = updater(prev)
+      setProfile((p) => ({ ...p, links: profileLinksFromSlots(next) }))
+      return next
+    })
   }, [])
+
+  const addProfileLink = useCallback(() => {
+    updateLinkSlots((prev) => [...prev, emptyLinkSlot()])
+  }, [updateLinkSlots])
+
+  const removeProfileLink = useCallback(
+    (slotId: string) => {
+      updateLinkSlots((prev) => prev.filter((s) => s.id !== slotId))
+    },
+    [updateLinkSlots]
+  )
 
   return (
     <div className="h-full min-h-0 flex-1 overflow-y-auto bg-background p-4">
       <fieldset
-        disabled={!hydrated}
+        disabled={!hydrated || !loadApplied}
         className="mx-auto max-w-3xl space-y-8 pb-12 min-w-0 border-0 p-0 disabled:pointer-events-none disabled:opacity-60"
       >
         <p className="text-sm text-muted-foreground">
           {!hydrated
             ? 'Loading CV data…'
-            : 'Structured CV fields (cvbuild-aligned). Saved to the app database on this device; not yet wired to the Source editor.'}
+            : loadError
+              ? `Could not load CV data: ${loadError}. Nothing was saved from this screen — your existing database was not overwritten.`
+              : 'Structured CV fields (cvbuild-aligned). Saved to the app database on this device; not yet wired to the Source editor.'}
         </p>
 
         <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -385,37 +431,99 @@ export function CvDataPage(): React.JSX.Element {
           </div>
           <div className="mt-4">
             <p className={labelClass}>Links</p>
-            {profile.links.map((link, i) => (
-              <div key={i} className="mt-2 flex flex-wrap gap-2">
-                <input
-                  className={`${inputClass} flex-1 min-w-[8rem]`}
-                  placeholder="Label"
-                  value={link.label}
-                  onChange={(e) => {
-                    const links = profile.links.slice() as ProfileLink[]
-                    links[i] = { ...links[i], label: e.target.value }
-                    setProfile((p) => ({ ...p, links }))
-                  }}
-                />
-                <input
-                  className={`${inputClass} flex-[2] min-w-[10rem]`}
-                  placeholder="URL"
-                  value={link.url}
-                  onChange={(e) => {
-                    const links = profile.links.slice() as ProfileLink[]
-                    links[i] = { ...links[i], url: e.target.value }
-                    setProfile((p) => ({ ...p, links }))
-                  }}
-                />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Typical résumés include LinkedIn, a personal website or portfolio, and GitHub for
+              technical roles; optional extras include X, Stack Overflow, or Medium when relevant.
+            </p>
+            {linkSlots.map((slot) => (
+              <div
+                key={slot.id}
+                className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
+              >
+                <div className="w-full sm:w-[13.5rem]">
+                  <label className={`${labelClass} mb-1 block`} htmlFor={`link-type-${slot.id}`}>
+                    Type
+                  </label>
+                  <Select
+                    value={slot.presetId}
+                    onValueChange={(v) => {
+                      updateLinkSlots((prev) =>
+                        prev.map((s) => {
+                          if (s.id !== slot.id) return s
+                          if (v === PROFILE_LINK_NONE) {
+                            return {
+                              ...s,
+                              presetId: PROFILE_LINK_NONE,
+                              customLabel: '',
+                              url: ''
+                            }
+                          }
+                          return {
+                            ...s,
+                            presetId: v as LinkSlot['presetId'],
+                            customLabel: v === 'other' ? s.customLabel : '',
+                            url: s.url
+                          }
+                        })
+                      )
+                    }}
+                  >
+                    <SelectTrigger id={`link-type-${slot.id}`} className="w-full bg-background">
+                      <SelectValue placeholder="Choose type" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="z-[100]">
+                      <SelectItem value={PROFILE_LINK_NONE}>None</SelectItem>
+                      {PROFILE_LINK_PRESETS.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {slot.presetId === 'other' && (
+                  <div className="min-w-0 flex-1 sm:max-w-[12rem]">
+                    <label
+                      className={`${labelClass} mb-1 block`}
+                      htmlFor={`link-custom-${slot.id}`}
+                    >
+                      Custom label
+                    </label>
+                    <input
+                      id={`link-custom-${slot.id}`}
+                      className={inputClass}
+                      placeholder="e.g. Behance"
+                      value={slot.customLabel}
+                      onChange={(e) => {
+                        updateLinkSlots((prev) =>
+                          prev.map((s) =>
+                            s.id === slot.id ? { ...s, customLabel: e.target.value } : s
+                          )
+                        )
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 sm:min-w-[14rem]">
+                  <label className={`${labelClass} mb-1 block`} htmlFor={`link-url-${slot.id}`}>
+                    URL
+                  </label>
+                  <input
+                    id={`link-url-${slot.id}`}
+                    className={inputClass}
+                    placeholder="https://…"
+                    value={slot.url}
+                    onChange={(e) => {
+                      updateLinkSlots((prev) =>
+                        prev.map((s) => (s.id === slot.id ? { ...s, url: e.target.value } : s))
+                      )
+                    }}
+                  />
+                </div>
                 <button
                   type="button"
-                  className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
-                  onClick={() => {
-                    setProfile((p) => ({
-                      ...p,
-                      links: p.links.filter((_, j) => j !== i)
-                    }))
-                  }}
+                  className="rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted sm:mb-0.5"
+                  onClick={() => removeProfileLink(slot.id)}
                 >
                   Remove
                 </button>
@@ -423,7 +531,7 @@ export function CvDataPage(): React.JSX.Element {
             ))}
             <button
               type="button"
-              className="mt-2 rounded-md border border-dashed border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+              className="mt-3 rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
               onClick={addProfileLink}
             >
               Add link
