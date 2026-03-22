@@ -22,13 +22,11 @@ export function TitleBar(): React.JSX.Element | null {
         height: TITLE_BAR_HEIGHT,
         paddingLeft: TRAFFIC_LIGHT_LEFT_PADDING,
         paddingRight: TRAFFIC_LIGHT_LEFT_PADDING,
-        // @ts-ignore
+        // @ts-expect-error Electron draggable region (non-standard CSS)
         WebkitAppRegion: 'drag'
       }}
     >
-      <span className="text-[13px] font-medium text-foreground/90">
-        CV Builder
-      </span>
+      <span className="text-[13px] font-medium text-foreground/90">CV Builder</span>
     </header>
   )
 }

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 function ResizablePanelGroup({
   className,
   ...props
-}: React.ComponentProps<typeof PanelGroup>) {
+}: React.ComponentProps<typeof PanelGroup>): React.JSX.Element {
   return (
     <PanelGroup
       className={cn('flex h-full w-full data-[panel-group-direction=vertical]:flex-col', className)}
@@ -16,14 +16,14 @@ function ResizablePanelGroup({
 function ResizablePanel({
   className,
   ...props
-}: React.ComponentProps<typeof Panel>) {
+}: React.ComponentProps<typeof Panel>): React.JSX.Element {
   return <Panel className={cn(className)} {...props} />
 }
 
 function ResizableHandle({
   className,
   ...props
-}: React.ComponentProps<typeof PanelResizeHandle>) {
+}: React.ComponentProps<typeof PanelResizeHandle>): React.JSX.Element {
   return (
     <PanelResizeHandle
       className={cn(

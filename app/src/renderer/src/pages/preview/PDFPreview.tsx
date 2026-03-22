@@ -58,7 +58,7 @@ export default function PDFPreview({
   if (!displayUrl) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
-        <p className="text-sm">Edit LaTeX on the right to see the PDF preview.</p>
+        <p className="text-sm">Edit the source to generate a PDF preview.</p>
       </div>
     )
   }

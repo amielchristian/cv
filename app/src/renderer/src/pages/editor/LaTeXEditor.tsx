@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { latex } from 'codemirror-lang-latex'
 
@@ -29,18 +29,8 @@ export default function LaTeXEditor({
     return () => ro.disconnect()
   }, [])
 
-  const handleChange = useCallback(
-    (val: string) => {
-      onChange(val)
-    },
-    [onChange]
-  )
-
   return (
-    <div
-      ref={containerRef}
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-    >
+    <div ref={containerRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <CodeMirror
           value={value}
@@ -48,7 +38,7 @@ export default function LaTeXEditor({
           minHeight="400px"
           placeholder={placeholder}
           extensions={[latex()]}
-          onChange={handleChange}
+          onChange={onChange}
           basicSetup={{
             lineNumbers: true,
             foldGutter: true,

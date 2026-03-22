@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
-import LaTeXEditor from './components/LaTeXEditor'
-import PDFPreview from './components/PDFPreview'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/resizable-panels'
+import { EditorPage } from './pages/editor/EditorPage'
+import { PreviewPage } from './pages/preview/PreviewPage'
 import { TitleBar } from './components/TitleBar'
 import { DEFAULT_CV } from './constants/defaultCv'
+import type { LeftPaneViewId } from './pages/editor/left-pane-views'
 
 const COMPILE_DEBOUNCE_MS = 800
 const SAVE_DEBOUNCE_MS = 500
@@ -14,6 +15,7 @@ function App(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [isCompiling, setIsCompiling] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [leftPaneView, setLeftPaneView] = useState<LeftPaneViewId>('source')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -106,21 +108,16 @@ function App(): React.JSX.Element {
       <TitleBar />
       <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
         <ResizablePanel defaultSize={50} minSize={20}>
-          <div className="flex h-full flex-col">
-            <div className="flex-shrink-0 border-b border-[var(--border-scroll)] bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              LaTeX
-            </div>
-            <LaTeXEditor value={latex} onChange={setLatex} />
-          </div>
+          <EditorPage
+            latex={latex}
+            onLatexChange={setLatex}
+            activeView={leftPaneView}
+            onViewChange={setLeftPaneView}
+          />
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={50} minSize={20}>
-          <div className="flex h-full flex-col">
-            <div className="flex-shrink-0 border-b border-[var(--border-scroll)] bg-muted px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Preview
-            </div>
-            <PDFPreview pdfBase64={pdfBase64} error={error} isCompiling={isCompiling} />
-          </div>
+          <PreviewPage pdfBase64={pdfBase64} error={error} isCompiling={isCompiling} />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

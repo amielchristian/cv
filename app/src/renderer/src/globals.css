@@ -79,7 +79,7 @@
     border-left: 0.5px solid var(--border-scroll);
   }
   ::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--muted-foreground) / 0.4);
+    background-color: hsl(var(--muted-foreground) / 0.5);
     border-left: 0.5px solid var(--border-scroll);
     background-clip: padding-box;
   }
