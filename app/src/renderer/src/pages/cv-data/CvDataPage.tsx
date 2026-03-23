@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useDebouncedRowUpserts } from './hooks/useDebouncedRowUpserts'
 import type {
   AwardEntry,
   EducationEntry,
@@ -7,23 +8,19 @@ import type {
   Profile,
   SkillGroup
 } from './cv-schema'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
 import { CV_DEBOUNCE_MS, dbRun, loadCvData } from '@/lib/cv-db'
 import {
   emptyLinkSlot,
-  PROFILE_LINK_NONE,
-  PROFILE_LINK_PRESETS,
   profileLinksFromSlots,
   slotsFromProfileLinks,
   type LinkSlot
 } from '@/lib/profile-link-presets'
 import { newId } from '@/lib/id'
+import { AwardsSection } from './components/AwardsSection'
+import { EducationSection } from './components/EducationSection'
+import { ExperienceSection } from './components/ExperienceSection'
+import { ProfileSection } from './components/ProfileSection'
+import { SkillGroupsSection } from './components/SkillGroupsSection'
 
 const emptyProfile: Profile = {
   name: '',
@@ -31,19 +28,6 @@ const emptyProfile: Profile = {
   email: '',
   phone: '',
   links: []
-}
-
-const inputClass =
-  'mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-
-const labelClass = 'text-xs font-medium text-muted-foreground'
-
-function SectionTitle({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return (
-    <h2 className="mb-3 border-b border-[var(--border-scroll)] pb-1 text-sm font-semibold uppercase tracking-wide text-foreground">
-      {children}
-    </h2>
-  )
 }
 
 export function CvDataPage(): React.JSX.Element {
@@ -74,24 +58,42 @@ export function CvDataPage(): React.JSX.Element {
   const skillGroupsRef = useRef(skillGroups)
   skillGroupsRef.current = skillGroups
 
-  const rowTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const flushAll = useCallback(() => {
+    void dbRun({ type: 'upsertProfile', payload: profileRef.current }).catch((err) =>
+      console.error('Failed to flush profile:', err)
+    )
+    educationRef.current.forEach((row) => {
+      void dbRun({ type: 'upsertEducation', payload: row }).catch((err) =>
+        console.error('Failed to flush education:', err)
+      )
+    })
+    experienceRef.current.forEach((row) => {
+      void dbRun({ type: 'upsertExperience', payload: row }).catch((err) =>
+        console.error('Failed to flush experience:', err)
+      )
+    })
+    leadershipRef.current.forEach((row) => {
+      void dbRun({ type: 'upsertLeadership', payload: row }).catch((err) =>
+        console.error('Failed to flush leadership:', err)
+      )
+    })
+    certificationsRef.current.forEach((row) => {
+      void dbRun({ type: 'upsertAward', payload: row }).catch((err) =>
+        console.error('Failed to flush award:', err)
+      )
+    })
+    skillGroupsRef.current.forEach((row) => {
+      void dbRun({ type: 'upsertSkillGroup', payload: row }).catch((err) =>
+        console.error('Failed to flush skill group:', err)
+      )
+    })
+  }, [certificationsRef, educationRef, experienceRef, leadershipRef, profileRef, skillGroupsRef])
 
-  const clearRowTimer = useCallback((key: string) => {
-    const t = rowTimersRef.current[key]
-    if (t) clearTimeout(t)
-    delete rowTimersRef.current[key]
-  }, [])
-
-  const scheduleRowUpsert = useCallback(
-    (key: string, run: () => void) => {
-      clearRowTimer(key)
-      rowTimersRef.current[key] = setTimeout(() => {
-        run()
-        delete rowTimersRef.current[key]
-      }, CV_DEBOUNCE_MS)
-    },
-    [clearRowTimer]
-  )
+  const { clearRowTimer, scheduleRowUpsert } = useDebouncedRowUpserts({
+    debounceMs: CV_DEBOUNCE_MS,
+    loadAppliedRef,
+    flushAll
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -133,43 +135,6 @@ export function CvDataPage(): React.JSX.Element {
     }, CV_DEBOUNCE_MS)
     return () => clearTimeout(t)
   }, [profile, loadApplied])
-
-  useEffect(() => {
-    const timersRef = rowTimersRef
-    return () => {
-      if (!loadAppliedRef.current) return
-      const pendingRowKeys = Object.keys(timersRef.current)
-      pendingRowKeys.forEach((k) => clearRowTimer(k))
-      void dbRun({ type: 'upsertProfile', payload: profileRef.current }).catch((err) =>
-        console.error('Failed to flush profile:', err)
-      )
-      educationRef.current.forEach((row) => {
-        void dbRun({ type: 'upsertEducation', payload: row }).catch((err) =>
-          console.error('Failed to flush education:', err)
-        )
-      })
-      experienceRef.current.forEach((row) => {
-        void dbRun({ type: 'upsertExperience', payload: row }).catch((err) =>
-          console.error('Failed to flush experience:', err)
-        )
-      })
-      leadershipRef.current.forEach((row) => {
-        void dbRun({ type: 'upsertLeadership', payload: row }).catch((err) =>
-          console.error('Failed to flush leadership:', err)
-        )
-      })
-      certificationsRef.current.forEach((row) => {
-        void dbRun({ type: 'upsertAward', payload: row }).catch((err) =>
-          console.error('Failed to flush award:', err)
-        )
-      })
-      skillGroupsRef.current.forEach((row) => {
-        void dbRun({ type: 'upsertSkillGroup', payload: row }).catch((err) =>
-          console.error('Failed to flush skill group:', err)
-        )
-      })
-    }
-  }, [clearRowTimer])
 
   const patchEducation = useCallback(
     (id: string, patch: Partial<EducationEntry>) => {
@@ -393,404 +358,56 @@ export function CvDataPage(): React.JSX.Element {
               : 'Structured CV fields (cvbuild-aligned). Saved to the app database on this device; not yet wired to the Source editor.'}
         </p>
 
-        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <SectionTitle>Profile</SectionTitle>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className={labelClass}>
-              Name
-              <input
-                className={inputClass}
-                value={profile.name}
-                onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-              />
-            </label>
-            <label className={labelClass}>
-              Email
-              <input
-                className={inputClass}
-                value={profile.email}
-                onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
-              />
-            </label>
-            <label className={`${labelClass} sm:col-span-2`}>
-              Address
-              <input
-                className={inputClass}
-                value={profile.address}
-                onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))}
-              />
-            </label>
-            <label className={labelClass}>
-              Phone
-              <input
-                className={inputClass}
-                value={profile.phone}
-                onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
-              />
-            </label>
-          </div>
-          <div className="mt-4">
-            <p className={labelClass}>Links</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Typical résumés include LinkedIn, a personal website or portfolio, and GitHub for
-              technical roles; optional extras include X, Stack Overflow, or Medium when relevant.
-            </p>
-            {linkSlots.map((slot) => (
-              <div
-                key={slot.id}
-                className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
-              >
-                <div className="w-full sm:w-[13.5rem]">
-                  <label className={`${labelClass} mb-1 block`} htmlFor={`link-type-${slot.id}`}>
-                    Type
-                  </label>
-                  <Select
-                    value={slot.presetId}
-                    onValueChange={(v) => {
-                      updateLinkSlots((prev) =>
-                        prev.map((s) => {
-                          if (s.id !== slot.id) return s
-                          if (v === PROFILE_LINK_NONE) {
-                            return {
-                              ...s,
-                              presetId: PROFILE_LINK_NONE,
-                              customLabel: '',
-                              url: ''
-                            }
-                          }
-                          return {
-                            ...s,
-                            presetId: v as LinkSlot['presetId'],
-                            customLabel: v === 'other' ? s.customLabel : '',
-                            url: s.url
-                          }
-                        })
-                      )
-                    }}
-                  >
-                    <SelectTrigger id={`link-type-${slot.id}`} className="w-full bg-background">
-                      <SelectValue placeholder="Choose type" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[100]">
-                      <SelectItem value={PROFILE_LINK_NONE}>None</SelectItem>
-                      {PROFILE_LINK_PRESETS.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {slot.presetId === 'other' && (
-                  <div className="min-w-0 flex-1 sm:max-w-[12rem]">
-                    <label
-                      className={`${labelClass} mb-1 block`}
-                      htmlFor={`link-custom-${slot.id}`}
-                    >
-                      Custom label
-                    </label>
-                    <input
-                      id={`link-custom-${slot.id}`}
-                      className={inputClass}
-                      placeholder="e.g. Behance"
-                      value={slot.customLabel}
-                      onChange={(e) => {
-                        updateLinkSlots((prev) =>
-                          prev.map((s) =>
-                            s.id === slot.id ? { ...s, customLabel: e.target.value } : s
-                          )
-                        )
-                      }}
-                    />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1 sm:min-w-[14rem]">
-                  <label className={`${labelClass} mb-1 block`} htmlFor={`link-url-${slot.id}`}>
-                    URL
-                  </label>
-                  <input
-                    id={`link-url-${slot.id}`}
-                    className={inputClass}
-                    placeholder="https://…"
-                    value={slot.url}
-                    onChange={(e) => {
-                      updateLinkSlots((prev) =>
-                        prev.map((s) => (s.id === slot.id ? { ...s, url: e.target.value } : s))
-                      )
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted sm:mb-0.5"
-                  onClick={() => removeProfileLink(slot.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="mt-3 rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
-              onClick={addProfileLink}
-            >
-              Add link
-            </button>
-          </div>
-        </section>
+        <ProfileSection
+          profile={profile}
+          linkSlots={linkSlots}
+          onProfilePatch={(patch) => setProfile((p) => ({ ...p, ...patch }))}
+          updateLinkSlots={updateLinkSlots}
+          onAddProfileLink={addProfileLink}
+          onRemoveProfileLink={removeProfileLink}
+        />
 
-        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <SectionTitle>Education</SectionTitle>
-          {education.map((row) => (
-            <div key={row.id} className="mb-4 rounded-md border border-border/80 p-3 last:mb-0">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className={labelClass}>
-                  Institution
-                  <input
-                    className={inputClass}
-                    value={row.institution}
-                    onChange={(e) => patchEducation(row.id, { institution: e.target.value })}
-                  />
-                </label>
-                <label className={labelClass}>
-                  Program
-                  <input
-                    className={inputClass}
-                    value={row.program}
-                    onChange={(e) => patchEducation(row.id, { program: e.target.value })}
-                  />
-                </label>
-                <label className={labelClass}>
-                  Start
-                  <input
-                    className={inputClass}
-                    value={row.startDate}
-                    onChange={(e) => patchEducation(row.id, { startDate: e.target.value })}
-                  />
-                </label>
-                <label className={labelClass}>
-                  End
-                  <input
-                    className={inputClass}
-                    value={row.endDate}
-                    onChange={(e) => patchEducation(row.id, { endDate: e.target.value })}
-                  />
-                </label>
-              </div>
-              <label className={`${labelClass} mt-2 block`}>
-                Addenda (honors, GWA, etc.)
-                <textarea
-                  className={`${inputClass} min-h-[4rem] resize-y`}
-                  value={row.addenda}
-                  onChange={(e) => patchEducation(row.id, { addenda: e.target.value })}
-                />
-              </label>
-              <button
-                type="button"
-                className="mt-2 text-xs text-destructive hover:underline"
-                onClick={() => removeEducation(row.id)}
-              >
-                Remove entry
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
-            onClick={addEducation}
-          >
-            Add education
-          </button>
-        </section>
+        <EducationSection
+          rows={education}
+          onPatch={patchEducation}
+          onRemove={removeEducation}
+          onAdd={addEducation}
+        />
 
-        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <SectionTitle>Experience</SectionTitle>
-          {experience.map((row) => (
-            <ExperienceBlock
-              key={row.id}
-              row={row}
-              onChange={onExperienceChange}
-              onRemove={() => removeExperience(row.id)}
-            />
-          ))}
-          <button
-            type="button"
-            className="rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
-            onClick={addExperience}
-          >
-            Add experience
-          </button>
-        </section>
+        <ExperienceSection
+          title="Experience"
+          rows={experience}
+          onChangeRow={onExperienceChange}
+          onRemoveRow={removeExperience}
+          onAdd={addExperience}
+          addLabel="Add experience"
+        />
 
-        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <SectionTitle>Leadership &amp; Activities</SectionTitle>
-          {leadership.map((row) => (
-            <ExperienceBlock
-              key={row.id}
-              row={row}
-              onChange={onLeadershipChange}
-              onRemove={() => removeLeadership(row.id)}
-            />
-          ))}
-          <button
-            type="button"
-            className="rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
-            onClick={addLeadership}
-          >
-            Add leadership / activity
-          </button>
-        </section>
+        <ExperienceSection
+          title="Leadership & Activities"
+          rows={leadership}
+          onChangeRow={onLeadershipChange}
+          onRemoveRow={removeLeadership}
+          onAdd={addLeadership}
+          addLabel="Add leadership / activity"
+        />
 
-        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <SectionTitle>Certifications</SectionTitle>
-          {certifications.map((row) => (
-            <div key={row.id} className="mb-4 rounded-md border border-border/80 p-3 last:mb-0">
-              <div className="grid gap-2 sm:grid-cols-3">
-                <label className={labelClass}>
-                  Name
-                  <input
-                    className={inputClass}
-                    value={row.name}
-                    onChange={(e) => patchCert(row.id, { name: e.target.value })}
-                  />
-                </label>
-                <label className={labelClass}>
-                  Conferrer
-                  <input
-                    className={inputClass}
-                    value={row.conferrer}
-                    onChange={(e) => patchCert(row.id, { conferrer: e.target.value })}
-                  />
-                </label>
-                <label className={labelClass}>
-                  Date
-                  <input
-                    className={inputClass}
-                    value={row.date}
-                    onChange={(e) => patchCert(row.id, { date: e.target.value })}
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                className="mt-2 text-xs text-destructive hover:underline"
-                onClick={() => removeCert(row.id)}
-              >
-                Remove entry
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
-            onClick={addCert}
-          >
-            Add certification
-          </button>
-        </section>
+        <AwardsSection
+          rows={certifications}
+          onPatch={patchCert}
+          onRemove={removeCert}
+          onAdd={addCert}
+        />
 
-        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-          <SectionTitle>Skills</SectionTitle>
-          {skillGroups.map((row) => (
-            <div key={row.id} className="mb-4 rounded-md border border-border/80 p-3 last:mb-0">
-              <label className={labelClass}>
-                Group name
-                <input
-                  className={inputClass}
-                  value={row.name}
-                  onChange={(e) => patchSkillGroup(row.id, { name: e.target.value })}
-                />
-              </label>
-              <label className={`${labelClass} mt-2 block`}>
-                Skills (comma-separated or one per line)
-                <textarea
-                  className={`${inputClass} min-h-[4rem] resize-y`}
-                  value={row.skills}
-                  onChange={(e) => patchSkillGroup(row.id, { skills: e.target.value })}
-                />
-              </label>
-              <button
-                type="button"
-                className="mt-2 text-xs text-destructive hover:underline"
-                onClick={() => removeSkillGroup(row.id)}
-              >
-                Remove group
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="rounded-md border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
-            onClick={addSkillGroup}
-          >
-            Add skill group
-          </button>
-        </section>
+        <SkillGroupsSection
+          rows={skillGroups}
+          onPatch={patchSkillGroup}
+          onRemove={removeSkillGroup}
+          onAdd={addSkillGroup}
+        />
       </fieldset>
     </div>
   )
 }
 
-function ExperienceBlock({
-  row,
-  onChange,
-  onRemove
-}: {
-  row: ExperienceEntry
-  onChange: (next: ExperienceEntry) => void
-  onRemove: () => void
-}): React.JSX.Element {
-  return (
-    <div className="mb-4 rounded-md border border-border/80 p-3 last:mb-0">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <label className={labelClass}>
-          Organization
-          <input
-            className={inputClass}
-            value={row.organization}
-            onChange={(e) => onChange({ ...row, organization: e.target.value })}
-          />
-        </label>
-        <label className={labelClass}>
-          Role
-          <input
-            className={inputClass}
-            value={row.role}
-            onChange={(e) => onChange({ ...row, role: e.target.value })}
-          />
-        </label>
-        <label className={labelClass}>
-          Start
-          <input
-            className={inputClass}
-            value={row.startDate}
-            onChange={(e) => onChange({ ...row, startDate: e.target.value })}
-          />
-        </label>
-        <label className={labelClass}>
-          End
-          <input
-            className={inputClass}
-            value={row.endDate}
-            onChange={(e) => onChange({ ...row, endDate: e.target.value })}
-          />
-        </label>
-      </div>
-      <label className={`${labelClass} mt-2 block`}>
-        Bullets (one per line)
-        <textarea
-          className={`${inputClass} min-h-[5rem] resize-y font-mono text-xs`}
-          value={row.bullets}
-          onChange={(e) => onChange({ ...row, bullets: e.target.value })}
-        />
-      </label>
-      <button
-        type="button"
-        className="mt-2 text-xs text-destructive hover:underline"
-        onClick={onRemove}
-      >
-        Remove entry
-      </button>
-    </div>
-  )
-}
+

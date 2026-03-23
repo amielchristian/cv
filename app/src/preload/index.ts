@@ -2,11 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { DbRequest, DbResult } from '../db/ipc'
 
-interface CompileResult {
-  success: boolean
-  pdfBase64?: string
-  error?: string
-}
+import type { CompileResult } from '../shared/latex-types'
 
 // Custom APIs for renderer
 const api = {

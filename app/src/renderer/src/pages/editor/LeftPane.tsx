@@ -4,7 +4,7 @@ import { LeftPaneViewBar } from './left-pane-view-bar'
 import { LEFT_PANE_VIEWS } from './left-pane-views'
 import type { LeftPaneViewId } from './left-pane-views'
 
-interface LeftPaneProps {
+type LeftPaneProps = {
   activeView: LeftPaneViewId
   onViewChange: (id: LeftPaneViewId) => void
   views: Partial<Record<LeftPaneViewId, React.ReactNode>>

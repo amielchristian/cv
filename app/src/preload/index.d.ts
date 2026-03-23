@@ -1,11 +1,6 @@
 import type { DbRequest, DbResult } from '../db/ipc'
 import { ElectronAPI } from '@electron-toolkit/preload'
-
-interface CompileResult {
-  success: boolean
-  pdfBase64?: string
-  error?: string
-}
+import type { CompileResult } from '../shared/latex-types'
 
 declare global {
   interface Window {

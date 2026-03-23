@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * electron-builder can leave Electron Framework.framework signed with Electron's
  * upstream identity while the main executable is ad-hoc, which triggers

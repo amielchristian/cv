@@ -6,6 +6,9 @@ interface PDFPreviewProps {
   isCompiling: boolean
 }
 
+const PDF_VIEWER_FRAGMENT = '#toolbar=0&navpanes=0'
+const RESIZE_PAUSE_MS = 150
+
 export default function PDFPreview({
   pdfBase64,
   error,
@@ -18,7 +21,7 @@ export default function PDFPreview({
       const blob = new Blob([bytes], { type: 'application/pdf' })
       const baseUrl = URL.createObjectURL(blob)
       return {
-        displayUrl: `${baseUrl}#toolbar=0&navpanes=0`,
+        displayUrl: `${baseUrl}${PDF_VIEWER_FRAGMENT}`,
         revokeUrl: baseUrl
       }
     } catch {
@@ -45,7 +48,7 @@ export default function PDFPreview({
     const onResize = (): void => {
       setIsWindowResizing(true)
       if (timeout) clearTimeout(timeout)
-      timeout = setTimeout(() => setIsWindowResizing(false), 150)
+      timeout = setTimeout(() => setIsWindowResizing(false), RESIZE_PAUSE_MS)
     }
 
     window.addEventListener('resize', onResize)

@@ -3,7 +3,7 @@ import { EditorPage } from '@/pages/editor/EditorPage'
 import { PreviewPage } from '@/pages/preview/PreviewPage'
 import type { LeftPaneViewId } from '@/pages/editor/left-pane-views'
 
-export interface WorkspacePageProps {
+export type WorkspacePageProps = {
   latex: string
   onLatexChange: (value: string) => void
   activeView: LeftPaneViewId

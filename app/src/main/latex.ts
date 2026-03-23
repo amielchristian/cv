@@ -4,11 +4,7 @@ import { mkdtemp, writeFile, readFile, rm } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
-export interface CompileResult {
-  success: boolean
-  pdfBase64?: string
-  error?: string
-}
+import type { CompileResult } from '../shared/latex-types'
 
 const TEX_PATHS: Record<string, string[]> = {
   darwin: ['/Library/TeX/texbin', '/usr/local/texlive/2025/bin/universal-darwin', '/usr/local/texlive/2024/bin/universal-darwin', '/usr/local/texlive/2023/bin/universal-darwin'],
