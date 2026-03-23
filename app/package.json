@@ -17,9 +17,9 @@
     "build": "npm run typecheck && electron-vite build",
     "build:bun": "bun run build",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "npm run build && electron-builder --dir",
+    "build:unpack": "npm run build && CSC_IDENTITY_AUTO=false electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:mac": "electron-vite build && CSC_IDENTITY_AUTO=false electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "db:generate": "drizzle-kit generate"
   },

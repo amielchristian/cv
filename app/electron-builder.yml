@@ -1,5 +1,6 @@
 appId: com.electron.app
 productName: cv
+afterSign: scripts/afterSign-mac.cjs
 directories:
   buildResources: build
 files:
@@ -20,6 +21,13 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  # Ad-hoc identity (`-`) re-signs the whole bundle so the main binary and
+  # Electron Framework.framework share one Team ID. Without this, macOS can
+  # refuse to load the framework ("mapping process and mapped file have
+  # different Team IDs") when signing is partial or mixed with stock Electron.
+  # For App Store / Developer ID distribution, replace with your certificate
+  # name or use CSC_NAME / CSC_LINK instead of `-`.
+  identity: "-"
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
