@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface PDFPreviewProps {
   pdfBase64: string | null
@@ -31,6 +31,29 @@ export default function PDFPreview({
       if (revokeUrl) URL.revokeObjectURL(revokeUrl)
     }
   }, [revokeUrl])
+
+  // The browser's built-in PDF viewer inside the iframe can be very expensive
+  // to re-layout while the Electron window is actively resizing. To keep the
+  // resize animation smooth, we unmount the iframe while resizing and restore it
+  // shortly after the resize settles.
+  const [isWindowResizing, setIsWindowResizing] = useState(false)
+  useEffect(() => {
+    if (!displayUrl) return
+
+    let timeout: ReturnType<typeof setTimeout> | null = null
+
+    const onResize = (): void => {
+      setIsWindowResizing(true)
+      if (timeout) clearTimeout(timeout)
+      timeout = setTimeout(() => setIsWindowResizing(false), 150)
+    }
+
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      if (timeout) clearTimeout(timeout)
+    }
+  }, [displayUrl])
 
   if (isCompiling) {
     return (
@@ -65,11 +88,19 @@ export default function PDFPreview({
 
   return (
     <div className="flex flex-1 flex-col min-h-0 bg-[#525659]">
-      <iframe
-        src={displayUrl}
-        title="CV PDF Preview"
-        className="flex-1 w-full border border-border bg-[#525659]"
-      />
+      {isWindowResizing ? (
+        // Lightweight placeholder to avoid iframe/PDF viewer repaint costs.
+        <div
+          className="flex-1 w-full border border-border bg-[#525659]"
+          aria-label="PDF preview paused during resize"
+        />
+      ) : (
+        <iframe
+          src={displayUrl}
+          title="CV PDF Preview"
+          className="flex-1 w-full border border-border bg-[#525659]"
+        />
+      )}
     </div>
   )
 }
